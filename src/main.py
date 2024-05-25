@@ -26,6 +26,7 @@ class USACOProblemScraper(customtkinter.CTk):
             font=self.font
         )
         self.url_entry.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
+        self.url_entry.bind("<KeyRelease>", self._check_url_entry)
 
         # Initialize file entry
         self.file: str = "README.md"
@@ -36,11 +37,12 @@ class USACOProblemScraper(customtkinter.CTk):
         )
         self.file_entry.insert(tkinter.END, self.file)
         self.file_entry.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
+        self.file_entry.bind("<KeyRelease>", self._check_file_entry)
 
         # Initialize the directory button
         self.directory_button = customtkinter.CTkButton(
             self.center_frame,
-            text="Choose Directory",
+            text="Directory",
             command=self._choose_directory,
             font=self.font,
         )
@@ -53,6 +55,7 @@ class USACOProblemScraper(customtkinter.CTk):
             text="Scrape",
             command=self._scrape_problem,
             font=self.font,
+            state=tkinter.DISABLED
         )
         self.scrape_button.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
 
@@ -68,6 +71,23 @@ class USACOProblemScraper(customtkinter.CTk):
         choosen_directory = tkinter.filedialog.askdirectory(initialdir=self.target_directory)
         if choosen_directory:
             self.target_directory = choosen_directory
+
+    def _check_url_entry(self, event):
+        # Enable the scrape button if the URL entry is not empty and is a valid https://usaco.org/ URL
+        if self.url_entry.get().strip() and self.url_entry.get().strip().startswith("https://usaco.org/"):
+            self.scrape_button.configure(state=tkinter.NORMAL)
+        else:
+            self.scrape_button.configure(state=tkinter.DISABLED)
+
+    def _check_file_entry(self, event):
+        # Enable the scrape button if the file entry is not empty and is a valid file name
+        file: str = self.file_entry.get().strip()
+        invalid_chars: list[str] = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+        if ('.' in file and not file.endswith('.md') or 
+        any(char in file for char in invalid_chars)):
+            self.scrape_button.configure(state=tkinter.DISABLED)
+        else:
+            self.scrape_button.configure(state=tkinter.NORMAL)
 
     def _scrape_problem(self):
         self.url = self.url_entry.get()
