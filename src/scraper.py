@@ -10,7 +10,17 @@ class USACOProblem:
 			directory (str, optional): Directory to write the file to. Defaults to workspace directory.
 		"""
 		self.URL: str = url
+
+		if '.' in file and not file.endswith('.md'):
+			raise ValueError("File must be a markdown file.")
+		# Else if the file name contains invalid characters
+		elif any(char in file for char in 
+		['/', '\\', ':', '*', '?', '"', '<', '>', '|']):
+			raise ValueError("File name contains invalid characters.")
+		elif not file.endswith('.md'):
+			file += '.md'
 		self.FILE: str = file
+		
 		if directory == os.getcwd() and directory.endswith('src'):
 			directory = os.getcwd()[:-4]	# Remove the 'src' part of the directory
 		self.DIRECTORY: str = directory
@@ -24,6 +34,8 @@ class USACOProblem:
 				print(f"Connection error. Retrying {max_attempts - attempts} more times.")
 				time.sleep(attempts)
 				attempts += 1
+		if response is None:
+			raise requests.exceptions.ConnectionError("Connection error. Please check your internet connection.")
 		self._soup = bs4.BeautifulSoup(response.content, 'html.parser')
 
 		self.CONTEST_URL = "https://usaco.org/" + self._soup.find('button')['onclick'].split('\'')[1]
