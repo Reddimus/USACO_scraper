@@ -3,6 +3,7 @@ import customtkinter, tkinter, os, json
 
 class USACOProblemScraper(customtkinter.CTk):
     def __init__(self):
+        """Initialize the USACO Problem Scraper GUI"""
         super().__init__()
 
         # Initialize the window
@@ -26,6 +27,7 @@ class USACOProblemScraper(customtkinter.CTk):
             font=self.font
         )
         self.url_entry.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
+        self.url_entry.bind("<KeyRelease>", self._check_url_entry)
 
         # Initialize file entry
         self.file: str = "README.md"
@@ -36,11 +38,12 @@ class USACOProblemScraper(customtkinter.CTk):
         )
         self.file_entry.insert(tkinter.END, self.file)
         self.file_entry.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
+        self.file_entry.bind("<KeyRelease>", self._check_file_entry)
 
         # Initialize the directory button
         self.directory_button = customtkinter.CTkButton(
             self.center_frame,
-            text="Choose Directory",
+            text="Directory",
             command=self._choose_directory,
             font=self.font,
         )
@@ -53,10 +56,16 @@ class USACOProblemScraper(customtkinter.CTk):
             text="Scrape",
             command=self._scrape_problem,
             font=self.font,
+            state=tkinter.DISABLED
         )
         self.scrape_button.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
 
     def _resize_font(self, event):
+        """Resize the font size of the widgets based on the window size
+
+        Args:
+            event (tkinter.Event): The event that triggered the font resize
+        """
         new_font_size = min(max(int(event.width / 21), 12), 72)
         self.font = ("Arial", new_font_size)
         self.url_entry.configure(font=self.font)
@@ -65,18 +74,43 @@ class USACOProblemScraper(customtkinter.CTk):
         self.scrape_button.configure(font=self.font)
 
     def _choose_directory(self):
+        """Choose the target directory to save the problem file when the directory button is clicked"""
         choosen_directory = tkinter.filedialog.askdirectory(initialdir=self.target_directory)
         if choosen_directory:
             self.target_directory = choosen_directory
 
+    def _check_url_entry(self, event):
+        """Check the URL entry to enable the scrape button if the URL is valid. 
+        
+        Args:
+            event (tkinter.Event): The event that triggered the URL entry check
+        """
+        if self.url_entry.get().strip() and self.url_entry.get().strip().startswith("https://usaco.org/"):
+            self.scrape_button.configure(state=tkinter.NORMAL)
+        else:
+            self.scrape_button.configure(state=tkinter.DISABLED)
+
+    def _check_file_entry(self, event):
+        """Check the file entry to enable the scrape button if the file name is valid.
+
+        Args:
+            event (tkinter.Event): The event that triggered the file entry check
+        """
+        file: str = self.file_entry.get().strip()
+        invalid_chars: list[str] = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+        if ('.' in file and not file.endswith('.md') or 
+        any(char in file for char in invalid_chars)):
+            self.scrape_button.configure(state=tkinter.DISABLED)
+        else:
+            self.scrape_button.configure(state=tkinter.NORMAL)
+
     def _scrape_problem(self):
+        """Scrape the USACO problem and write it to the target directory"""
         self.url = self.url_entry.get()
         self.file = self.file_entry.get()
         usaco_problem = scraper.USACOProblem(self.url, self.file, self.target_directory)
         usaco_problem.write_problem()
 
 if __name__ == "__main__":
-    customtkinter.set_appearance_mode("dark")
-    customtkinter.set_default_color_theme("dark-blue")
     app = USACOProblemScraper()
     app.mainloop()
