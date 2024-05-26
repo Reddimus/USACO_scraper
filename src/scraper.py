@@ -1,7 +1,7 @@
 import requests, bs4, time, os, argparse
 
 class USACOProblem:
-	def __init__(self, url: str, file: str = "README.md", directory: str = os.getcwd()):
+	def __init__(self, url: str, file: str = "README", directory: str = os.getcwd()):
 		"""Scrapes a USACO problem and writes it to a markdown file.
 
 		Args:
@@ -9,6 +9,9 @@ class USACOProblem:
 			file (str, optional): File name to write the problem to. Defaults to "README.md".
 			directory (str, optional): Directory to write the file to. Defaults to workspace directory.
 		"""
+		self.USACO_WEBSITE: str = "https://usaco.org/"
+		if not url or not url.startswith(f"{self.USACO_WEBSITE}index.php?page=viewproblem"):
+			raise ValueError(f"URL must start with: {self.USACO_WEBSITE}index.php?page=viewproblem")
 		self.URL: str = url
 
 		if '.' in file and not file.endswith('.md'):
@@ -35,10 +38,10 @@ class USACOProblem:
 				time.sleep(attempts)
 				attempts += 1
 		if response is None:
-			raise requests.exceptions.ConnectionError("Connection error. Please check your internet connection.")
+			raise requests.exceptions.ConnectionError("Connection error. Please check your internet connection or the URL.")
 		self._soup = bs4.BeautifulSoup(response.content, 'html.parser')
 
-		self.CONTEST_URL = "https://usaco.org/" + self._soup.find('button')['onclick'].split('\'')[1]
+		self.CONTEST_URL = self.USACO_WEBSITE + self._soup.find('button')['onclick'].split('\'')[1]
 		self.CONTEST_TITLE: str = self._soup.find('h2').text.strip()
 		self.PROBLEM_TITLE: str = self._soup.find_all('h2')[1].text.strip()
 		self.division: str = self.CONTEST_TITLE.split(' ')[-1]
@@ -132,9 +135,23 @@ class USACOProblem:
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument('url', type=str, help='URL of the USACO problem')
-	parser.add_argument('--file', type=str, help='File to write the problem to', default='README.md')
-	parser.add_argument('--directory', type=str, help='Directory to write the file to', default=os.getcwd())
+	parser.add_argument(
+		'url', 
+		type=str, 
+		help='URL of the USACO problem'
+	)
+	parser.add_argument(
+		'--file', 
+		type=str, 
+		help='File to write the problem to', 
+		default='README'
+	)
+	parser.add_argument(
+		'--directory', 
+		type=str, 
+		help='Directory to write the file to', 
+		default=os.getcwd()
+	)
 	args = parser.parse_args()
 
 	usaco_problem = USACOProblem(url=args.url, file=args.file)
