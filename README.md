@@ -25,7 +25,7 @@ This is a simple program that scrapes problems from the USA Computing Olympiad w
     Example:
     
     ```bash
-    python scraper.py "https://usaco.org/index.php?page=viewproblem2&cpid=810" --file "Test.md"
+    python scraper.py "https://usaco.org/index.php?page=viewproblem2&cpid=810" --file "Test"
     ```
 
 ## Using the USACO scraper file with the GUI

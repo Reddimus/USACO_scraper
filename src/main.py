@@ -27,10 +27,10 @@ class USACOProblemScraper(customtkinter.CTk):
             font=self.font
         )
         self.url_entry.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
-        self.url_entry.bind("<KeyRelease>", self._check_url_entry)
+        self.url_entry.bind("<KeyRelease>", self._check_entries)
 
         # Initialize file entry
-        self.file: str = "README.md"
+        self.file: str = "README"
         self.file_entry = customtkinter.CTkEntry(
             self.center_frame, 
             placeholder_text="File", 
@@ -38,7 +38,7 @@ class USACOProblemScraper(customtkinter.CTk):
         )
         self.file_entry.insert(tkinter.END, self.file)
         self.file_entry.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
-        self.file_entry.bind("<KeyRelease>", self._check_file_entry)
+        self.file_entry.bind("<KeyRelease>", self._check_entries)
 
         # Initialize the directory button
         self.directory_button = customtkinter.CTkButton(
@@ -79,30 +79,23 @@ class USACOProblemScraper(customtkinter.CTk):
         if choosen_directory:
             self.target_directory = choosen_directory
 
-    def _check_url_entry(self, event):
-        """Check the URL entry to enable the scrape button if the URL is valid. 
-        
-        Args:
-            event (tkinter.Event): The event that triggered the URL entry check
-        """
-        if self.url_entry.get().strip() and self.url_entry.get().strip().startswith("https://usaco.org/"):
-            self.scrape_button.configure(state=tkinter.NORMAL)
-        else:
-            self.scrape_button.configure(state=tkinter.DISABLED)
-
-    def _check_file_entry(self, event):
-        """Check the file entry to enable the scrape button if the file name is valid.
+    def _check_entries(self, event):
+        """Check the url and file entries to enable the scrape button if they are valid.
 
         Args:
-            event (tkinter.Event): The event that triggered the file entry check
+            event (tkinter.Event): The event that triggered the check
         """
+        url: str = self.url_entry.get().strip()
         file: str = self.file_entry.get().strip()
         invalid_chars: list[str] = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
-        if ('.' in file and not file.endswith('.md') or 
-        any(char in file for char in invalid_chars)):
-            self.scrape_button.configure(state=tkinter.DISABLED)
+        if (url.startswith("https://usaco.org/index.php?page=viewproblem") and
+        (not '.' in file or file.endswith('.md') and 
+        not any(char in file for char in invalid_chars))):
+            if self.scrape_button.cget('state') != tkinter.NORMAL:
+                self.scrape_button.configure(state=tkinter.NORMAL)
         else:
-            self.scrape_button.configure(state=tkinter.NORMAL)
+            if self.scrape_button.cget('state') != tkinter.DISABLED:
+                self.scrape_button.configure(state=tkinter.DISABLED)
 
     def _scrape_problem(self):
         """Scrape the USACO problem and write it to the target directory"""
