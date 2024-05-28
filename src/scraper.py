@@ -1,32 +1,16 @@
 import requests, bs4, time, os, argparse
 
 class USACOProblem:
-	def __init__(self, url: str, file: str = "README", directory: str = os.getcwd()):
-		"""Scrapes a USACO problem and writes it to a markdown file.
+	def __init__(self, url: str) -> None:
+		"""Scrapes a USACO problem from the given URL and formats it for markdown.
 
 		Args:
 			url (str): URL of the USACO problem.
-			file (str, optional): File name to write the problem to. Defaults to "README.md".
-			directory (str, optional): Directory to write the file to. Defaults to workspace directory.
 		"""
 		self.USACO_WEBSITE: str = "https://usaco.org/"
 		if not url or not url.startswith(f"{self.USACO_WEBSITE}index.php?page=viewproblem"):
 			raise ValueError(f"URL must start with: {self.USACO_WEBSITE}index.php?page=viewproblem")
 		self.URL: str = url
-
-		if '.' in file and not file.endswith('.md'):
-			raise ValueError("File must be a markdown file.")
-		# Else if the file name contains invalid characters
-		elif any(char in file for char in 
-		['/', '\\', ':', '*', '?', '"', '<', '>', '|']):
-			raise ValueError("File name contains invalid characters.")
-		elif not file.endswith('.md'):
-			file += '.md'
-		self.FILE: str = file
-		
-		if directory == os.getcwd() and directory.endswith('src'):
-			directory = os.getcwd()[:-4]	# Remove the 'src' part of the directory
-		self.DIRECTORY: str = directory
 
 		response = None
 		attempts, max_attempts = 0, 3
@@ -122,15 +106,54 @@ class USACOProblem:
 		problem_statement: str = self._format_problem_statement()
 		return f'{contest_title}\n{problem_title}\n\n{problem_statement}'
 
-	def write_problem(self) -> None:
-		"""Writes the problem to a markdown file."""
-		file: str = self.FILE
-		num: int = 1
-		while os.path.exists(os.path.join(self.DIRECTORY, file)):
-			file = f"{self.FILE.split('.')[0]} ({num}).md"
-			num += 1
+	def write_problem(self, save_as: str = "README", overwrite: bool = False) -> None:
+		"""Writes the problem to a markdown file.
 
-		with open(os.path.join(self.DIRECTORY, file), 'w') as fin:
+		Args:
+			save_as (str, optional): File name to save the problem as. Defaults to "README".
+			overwrite (bool, optional): Overwrite the file if it already exists. Defaults to False.
+		"""
+
+		# Check & get the directory and file name to save the problem as
+		file_name: str = ""
+		directory: str = ""
+		# If the save_as file has invalid characters
+		if any(char in save_as for char in ['*', '?', '"', '<', '>', '|']):
+			raise ValueError("File name contains invalid characters.")
+		# Else if the save_as file is invalid file type format
+		elif '.' in save_as and (not save_as.endswith('.md') and not save_as.endswith('.txt')):
+			raise ValueError("File must be a markdown file or a text file.")
+		# Else if the save_as file is located at a directory that does not exist
+		elif ('\\' in save_as or '/' in save_as) and not os.path.exists(os.path.dirname(save_as)):
+			raise ValueError("Directory does not exist.")
+		# Else if the save_as file is located at a valid directory
+		elif os.path.exists(os.path.dirname(save_as)):
+			directory = os.path.dirname(save_as)
+			file_name = os.path.basename(save_as)
+		# Else if the save_as file is just a string and not a directory
+		else:
+			default_directory = os.getcwd()
+			directory = default_directory if not default_directory.endswith('src') else default_directory[:-4]
+			file_name = save_as
+
+		# Create a valid file path
+		base_name, extension = os.path.splitext(file_name)
+		if not extension:
+			extension = '.md'
+		
+		existing_files = os.listdir(directory)
+
+		if file_name not in existing_files or overwrite:
+			save_as = os.path.join(directory, file_name)
+		else:
+			num = 1
+			while f"{base_name} ({num}){extension}" in existing_files:
+				num += 1
+
+			save_as = os.path.join(directory, f"{base_name} ({num}){extension}")
+
+		# Create a new file with the formatted problem
+		with open(save_as, 'w') as fin:
 			fin.write(self.text)
 
 if __name__ == '__main__':
@@ -141,18 +164,18 @@ if __name__ == '__main__':
 		help='URL of the USACO problem'
 	)
 	parser.add_argument(
-		'--file', 
+		'--save', 
 		type=str, 
-		help='File to write the problem to', 
+		help='File name to save the problem as', 
 		default='README'
 	)
 	parser.add_argument(
-		'--directory', 
-		type=str, 
-		help='Directory to write the file to', 
-		default=os.getcwd()
+		'--overwrite', 
+		action='store_true', 
+		help='Overwrite the file if it already exists', 
+		default=False
 	)
 	args = parser.parse_args()
 
-	usaco_problem = USACOProblem(url=args.url, file=args.file)
-	usaco_problem.write_problem()
+	usaco_problem = USACOProblem(url=args.url)
+	usaco_problem.write_problem(save_as=args.save, overwrite=args.overwrite)
