@@ -31,7 +31,7 @@ This is a simple program that scrapes problems from the USA Computing Olympiad w
     Example 2:
 
     ```bash
-    python scraper.py "https://usaco.org/index.php?page=viewproblem2&cpid=810" --save "C:\\Program Files\\Test.md" --overwrite
+    python scraper.py "https://usaco.org/index.php?page=viewproblem2&cpid=1422" --save "C:\\Program Files\\Test.md" --overwrite
     ```
 
 ## Using the USACO scraper file with the GUI

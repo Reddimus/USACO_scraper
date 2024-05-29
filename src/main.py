@@ -1,109 +1,98 @@
 import scraper
-import customtkinter, tkinter, os, json
+import customtkinter, tkinter, os
 
 class USACOProblemScraper(customtkinter.CTk):
-    def __init__(self):
-        """Initialize the USACO Problem Scraper GUI"""
-        super().__init__()
+	def __init__(self):
+		"""Initialize the USACO Problem Scraper GUI"""
+		super().__init__()
 
-        # Initialize the window
-        self.title("USACO Problem Scraper")
-        self.geometry("400x400")
+		# Initialize the window
+		self.title("USACO Problem Scraper")
+		self.geometry("480x480")  # Adjust the size to better fit new elements
 
-        # Initialize directory
-        self.font: tuple = ("Arial", 12)   # min font size: 12, max font size: 72
-        # Max height for group frame should be 400
+		self.usaco_problem = None
+		self.save_directory = os.path.expanduser('~\\Downloads')  # Default directory to save files
 
-        # Create a frame to hold all the widgets and center them
-        self.center_frame = customtkinter.CTkFrame(self)
-        self.center_frame.pack(pady=30, padx=30, expand=True, fill=tkinter.BOTH)
-        self.center_frame.bind("<Configure>", self._resize_font)
+		# Top Frame for URL entry and Scrape button
+		self.top_frame = customtkinter.CTkFrame(self)
+		self.top_frame.pack(pady=20, padx=20, side=tkinter.TOP, fill=tkinter.X)
 
-        # Initialize url entry
-        self.url: str = ""
-        self.url_entry = customtkinter.CTkEntry(
-            self.center_frame, 
-            placeholder_text="USACO Problem URL", 
-            font=self.font
-        )
-        self.url_entry.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
-        self.url_entry.bind("<KeyRelease>", self._check_entries)
+		self.url_entry = customtkinter.CTkEntry(
+			self.top_frame, 
+			placeholder_text="Enter USACO Problem URL"
+		)
+		self.url_entry.pack(side=tkinter.LEFT, fill=tkinter.X, expand=True)
+		self.url_entry.bind("<KeyRelease>", self._validate_url)
+		self.url_entry.bind("<Return>", self._scrape_problem)
+		self.url_entry.bind("<Return>", self._validate_save)
 
-        # Initialize file entry
-        self.file: str = "README"
-        self.file_entry = customtkinter.CTkEntry(
-            self.center_frame, 
-            placeholder_text="File", 
-            font=self.font
-        )
-        self.file_entry.insert(tkinter.END, self.file)
-        self.file_entry.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
-        self.file_entry.bind("<KeyRelease>", self._check_entries)
+		self.save_button = customtkinter.CTkButton(
+			self.top_frame, 
+			text="Save", 
+			command=self._save_problem, 
+			state=tkinter.DISABLED, 
+			width=30
+		)
+		self.save_button.pack(side=tkinter.RIGHT)
 
-        # Initialize the directory button
-        self.directory_button = customtkinter.CTkButton(
-            self.center_frame,
-            text="Directory",
-            command=self._choose_directory,
-            font=self.font,
-        )
-        self.directory_button.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
-        self.target_directory = os.path.expanduser('~\\Downloads')
+		self.scrape_button = customtkinter.CTkButton(
+			self.top_frame, 
+			text="Scrape", 
+			command=self._scrape_problem, 
+			state=tkinter.DISABLED, 
+			width=150
+		)
+		self.scrape_button.pack(side=tkinter.RIGHT)
+		self.scrape_button.bind("<Button-1>", self._validate_save)
 
-        # Initialize the scrape button
-        self.scrape_button = customtkinter.CTkButton(
-            self.center_frame,
-            text="Scrape",
-            command=self._scrape_problem,
-            font=self.font,
-            state=tkinter.DISABLED
-        )
-        self.scrape_button.pack(pady=3, padx=3, expand=True, fill=tkinter.BOTH)
+		# Text Area for displaying scraped problem text
+		self.text_area = customtkinter.CTkTextbox(self)
+		self.text_area.pack(padx=20, pady=20, expand=True, fill=tkinter.BOTH)
+		self.text_area.bind("<KeyRelease>", self._update_text)
 
-    def _resize_font(self, event):
-        """Resize the font size of the widgets based on the window size
+	def _validate_url(self, event):
+		"""Validate the URL in the URL entry"""
+		url = self.url_entry.get().strip()
+		if url.startswith("https://usaco.org/index.php?page=viewproblem"):
+			self.scrape_button.configure(state=tkinter.NORMAL)
+		else:
+			self.scrape_button.configure(state=tkinter.DISABLED)
 
-        Args:
-            event (tkinter.Event): The event that triggered the font resize
-        """
-        new_font_size = min(max(int(event.width / 21), 12), 72)
-        self.font = ("Arial", new_font_size)
-        self.url_entry.configure(font=self.font)
-        self.file_entry.configure(font=self.font)
-        self.directory_button.configure(font=self.font)
-        self.scrape_button.configure(font=self.font)
+	def _validate_save(self, event):
+		"""Validate the save button"""
+		if self.usaco_problem == None:
+			self.save_button.configure(state=tkinter.DISABLED)
+		else:
+			self.save_button.configure(state=tkinter.NORMAL)
 
-    def _choose_directory(self):
-        """Choose the target directory to save the problem file when the directory button is clicked"""
-        choosen_directory = tkinter.filedialog.askdirectory(initialdir=self.target_directory)
-        if choosen_directory:
-            self.target_directory = choosen_directory
+	def _scrape_problem(self, event=None):
+		"""Scrape the USACO problem and display it"""
+		if self.scrape_button.cget("state") == tkinter.DISABLED:
+			return
 
-    def _check_entries(self, event):
-        """Check the url and file entries to enable the scrape button if they are valid.
+		self.usaco_problem = scraper.USACOProblem(self.url_entry.get().strip())
+		self.text_area.delete("1.0", tkinter.END)
+		self.text_area.insert(tkinter.END, self.usaco_problem.text)
 
-        Args:
-            event (tkinter.Event): The event that triggered the check
-        """
-        url: str = self.url_entry.get().strip()
-        file: str = self.file_entry.get().strip()
-        invalid_chars: list[str] = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
-        if (url.startswith("https://usaco.org/index.php?page=viewproblem") and
-        (not '.' in file or file.endswith('.md') and 
-        not any(char in file for char in invalid_chars))):
-            if self.scrape_button.cget('state') != tkinter.NORMAL:
-                self.scrape_button.configure(state=tkinter.NORMAL)
-        else:
-            if self.scrape_button.cget('state') != tkinter.DISABLED:
-                self.scrape_button.configure(state=tkinter.DISABLED)
-
-    def _scrape_problem(self):
-        """Scrape the USACO problem and write it to the target directory"""
-        self.url = self.url_entry.get()
-        self.file = self.file_entry.get()
-        usaco_problem = scraper.USACOProblem(self.url, self.file, self.target_directory)
-        usaco_problem.write_problem()
+	def _save_problem(self):
+		"""Save the USACO problem to a file"""
+		file_directory = tkinter.filedialog.asksaveasfilename(
+			initialdir=self.save_directory, 
+			title="Save USACO Problem", 
+			defaultextension=".md", 
+			filetypes=(("Markdown files", "*.md"), ("Text files", "*.txt"))
+		)
+		if file_directory:
+			# Get directory
+			self.save_directory = os.path.dirname(file_directory)
+			self.usaco_problem.write_problem(save_as=file_directory, overwrite=True)
+		
+	
+	def _update_text(self, event):
+		"""Update the text area with the new text"""
+		if self.usaco_problem != None:
+			self.usaco_problem.text = self.text_area.get("1.0", tkinter.END)
 
 if __name__ == "__main__":
-    app = USACOProblemScraper()
-    app.mainloop()
+	app = USACOProblemScraper()
+	app.mainloop()
