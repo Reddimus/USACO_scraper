@@ -67,7 +67,7 @@ class USACOProblemScraper(customtkinter.CTk):
 	def _validate_url(self, event):
 		"""Validate the URL in the URL entry"""
 		url = self.url_entry.get().strip()
-		if url.startswith("https://usaco.org/index.php?page=viewproblem"):
+		if url.startswith("https://usaco.org/") and "index.php?page=viewproblem" in url:
 			self.scrape_button.configure(state=tkinter.NORMAL)
 		else:
 			self.scrape_button.configure(state=tkinter.DISABLED)
