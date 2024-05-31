@@ -8,8 +8,9 @@ class USACOProblem:
 			url (str): URL of the USACO problem.
 		"""
 		self.USACO_WEBSITE: str = "https://usaco.org/"
-		if not url or not url.startswith(f"{self.USACO_WEBSITE}index.php?page=viewproblem"):
-			raise ValueError(f"URL must start with: {self.USACO_WEBSITE}index.php?page=viewproblem")
+		problem_subwebsite: str = "index.php?page=viewproblem"
+		if not url or not url.startswith(self.USACO_WEBSITE) or problem_subwebsite not in url:
+			raise ValueError(f"URL must start with: {self.USACO_WEBSITE} and contain {problem_subwebsite}.")
 		self.URL: str = url
 
 		response = None
