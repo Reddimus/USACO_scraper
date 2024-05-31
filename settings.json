@@ -1,8 +1,8 @@
 {
-    "fullscreen": true,
+    "fullscreen": false,
     "resolution": [
-        1920,
-        1057
+        480,
+        480
     ],
     "save_directory": "~\\Downloads"
 }
