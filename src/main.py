@@ -100,7 +100,6 @@ class USACOProblemScraper(customtkinter.CTk):
 			# Get directory
 			self.save_directory = os.path.dirname(file_directory)
 			self.usaco_problem.write_problem(save_as=file_directory, overwrite=True)
-		
 	
 	def _update_text(self, event):
 		"""Update the text area with the new text"""
