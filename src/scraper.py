@@ -45,40 +45,76 @@ class USACOProblem:
 			return "Problem text not found."
 		
 		# Extract text that will be formatted for markdown
-		subheaders: list[str] = [
+		subheaders: set[str] = {
 			subheader.text.strip() 
 			for subheader in problem_text_div.find_all("h4")
+		}
+		sample_inputs: list[str] = [
+			sample_input.text.strip() 
+			for sample_input in problem_text_div.find_all("pre", class_="in")
 		]
-		sample_input: str = problem_text_div.find("pre", class_="in").text.strip()
-		sample_output: str = problem_text_div.find('pre', class_='out').text.strip()
-		bolded_texts: list[str] = [
+		sample_outputs: list[str] = [
+			sample_output.text.strip()
+			for sample_output in problem_text_div.find_all("pre", class_="out")
+		]
+		bolded_texts: set[str] = {
 			bolded.text.strip() 
 			for bolded in problem_text_div.find_all("strong")
-		]
+		}
 
-		problem_text: str = problem_text_div.text.strip()
+		problem_text: str = problem_text_div.text
 
 		# Format for markdown
+
+		# Format subheaders to be titles
 		for subheader in subheaders:
 			problem_text = problem_text.replace(subheader, f"### {subheader}  ")
-		sample_start = problem_text.find("### SAMPLE INPUT:")
-		sample_end = sample_start + len("### SAMPLE INPUT:")
-		while problem_text[sample_end] != '\n':
-			sample_end += 1
-		sample_title = problem_text[sample_start:sample_end+1]
-		problem_text = problem_text.replace(
-			f"{sample_title}{sample_input}", 
-			f"{sample_title}```\n{sample_input}\n```"
-		)
-		sample_start = problem_text.find("### SAMPLE OUTPUT:")
-		sample_end = sample_start + len("### SAMPLE OUTPUT:")
-		while problem_text[sample_end] != '\n':
-			sample_end += 1
-		sample_title = problem_text[sample_start:sample_end+1]
-		problem_text = problem_text.replace(
-			f"{sample_title}{sample_output}",
-			f"{sample_title}```\n{sample_output}\n```"
-		)
+
+		# Format sample input to be a code block
+		sample_start: int = 0
+		target: str = "### SAMPLE INPUT:"
+		for sample_input in sample_inputs:
+			# Find the the current sample input index based off previous start index
+			sample_start = problem_text.find(target, sample_start)
+			if sample_start == -1:
+				break
+			sample_end = sample_start + len(target)
+
+			# Gather other characters & spaces
+			while problem_text[sample_end] != '\n':
+				sample_end += 1
+
+			sample_title: str = problem_text[sample_start:sample_end+1]
+			problem_text = problem_text.replace(
+				f"{sample_title}{sample_input}",
+				f"{sample_title}```\n{sample_input}\n```"
+			)
+
+			sample_start = sample_end	# Update the start index for the next sample input
+		
+		# Format sample output to be a code block
+		sample_start = 0
+		target = "### SAMPLE OUTPUT:"
+		for sample_output in sample_outputs:
+			# Find the the current sample output index based off previous start index
+			sample_start = problem_text.find(target, sample_start)
+			if sample_start == -1:
+				break
+			sample_end = sample_start + len(target)
+
+			# Gather other characters & spaces
+			while problem_text[sample_end] != '\n':
+				sample_end += 1
+
+			sample_title = problem_text[sample_start:sample_end+1]
+			problem_text = problem_text.replace(
+				f"{sample_title}{sample_output}",
+				f"{sample_title}```\n{sample_output}\n```"
+			)
+
+			sample_start = sample_end
+
+		# Format bolded text
 		for bolded_text in bolded_texts:
 			problem_text = problem_text.replace(bolded_text, f"**{bolded_text}**")
 		
@@ -94,7 +130,7 @@ class USACOProblem:
 
 		problem_number: str = self.PROBLEM_TITLE.split(' ')[1].split('.')[0]
 		problem_name: str = '_'.join(self.PROBLEM_TITLE.split(' ')[2::])
-		return f'P{problem_number}_{year}-{problem_name}'
+		return f"P{problem_number}_{year}-{problem_name}"
 	
 	def _format_problem(self) -> str:
 		"""Formats the problem for markdown.
@@ -104,8 +140,7 @@ class USACOProblem:
 		"""
 		contest_title: str = f'# [{self.CONTEST_TITLE}]({self.CONTEST_URL})'
 		problem_title: str = f'## [{self.PROBLEM_TITLE}]({self.URL})'
-		problem_statement: str = self._format_problem_statement()
-		return f'{contest_title}\n{problem_title}\n\n{problem_statement}'
+		return f'{contest_title}\n{problem_title}\n\n{self.PROBLEM_STATEMENT}'
 
 	def write_problem(self, save_as: str = "README", overwrite: bool = False) -> None:
 		"""Writes the problem to a markdown file.
