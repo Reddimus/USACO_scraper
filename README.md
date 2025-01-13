@@ -3,6 +3,7 @@
 This is a simple program that scrapes problems from the USA Computing Olympiad website and saves them to a local directory. The program is written in Python and uses the BeautifulSoup library to parse the HTML of the website.
 
 ## Requirements
+
 1. Python3 preferably 3.11 or higher.
 2. Install third party Python libraries (`beautifulsoup4`, `requests`, `customtkinter`) using the text file from the repository.
 
@@ -23,7 +24,7 @@ This is a simple program that scrapes problems from the USA Computing Olympiad w
     > **Note:** that `--save` and `overwrite` are optional arguments. If `--save` is not provided, the problems will be saved to a file called `README.md` in the repository folder. While `--overwrite` is a flag that will overwrite the file if it already exists.
 
     Example 1:
-    
+
     ```bash
     python scraper.py "https://usaco.org/index.php?page=viewproblem2&cpid=810" --save "Test"
     ```
