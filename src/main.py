@@ -1,124 +1,224 @@
+"""GUI application for scraping USACO problems from their website and saving them locally."""
+
+import json
+import os
+import tkinter
+import sys
+
+import customtkinter
+
 import scraper
-import customtkinter, tkinter, os, json
 
 class USACOProblemScraper(customtkinter.CTk):
-	def __init__(self):
-		"""Initialize the USACO Problem Scraper GUI"""
-		super().__init__()
+    """GUI application that provides an interface for scraping and saving USACO problems."""
 
-		self.settings_directory: str = os.path.join(os.path.dirname(os.getcwd()), "settings.json")
-		with open(self.settings_directory, "r") as file:
-			settings = json.load(file)
+    def __init__(self):
+        """Initialize the USACO Problem Scraper GUI"""
+        super().__init__()
 
-		# Initialize the window
-		self.title("USACO Problem Scraper")
+        # Group configuration related attributes
+        self.config = {
+            'settings_directory': self._get_settings_path(),
+            'save_directory': None,
+            'usaco_problem': None
+        }
+        self._load_settings()
 
-		width, height = settings["resolution"]
-		self.geometry(f"{width}x{height}")
+        # Initialize the window
+        self.title("USACO Problem Scraper")
+        self.geometry(f"{self.window_size[0]}x{self.window_size[1]}")
+        self.attributes("-fullscreen", self.is_fullscreen)
 
-		if settings["fullscreen"]:
-			self.attributes("-fullscreen", True)
-		else:
-			self.attributes("-fullscreen", False)
+        # Group UI components
+        self.components = {
+            'top_frame': None,
+            'url_entry': None,
+            'save_button': None,
+            'scrape_button': None,
+            'text_area': None
+        }
+        self._setup_ui()
 
-		self.usaco_problem = None
-		if settings["save_directory"] == "~\\Downloads":
-			self.save_directory = os.path.expanduser(settings["save_directory"])
-		else:
-			self.save_directory = settings["save_directory"]
+    def _get_settings_path(self) -> str:
+        """Get the path to settings.json, handling both development and bundled cases."""
+        if getattr(sys, 'frozen', False):
+            # Running as bundled exe
+            base_path = os.path.dirname(sys.executable)
+        else:
+            # Running in development
+            base_path = os.path.dirname(os.getcwd())
 
-		# Top Frame for URL entry and Scrape button
-		self.top_frame = customtkinter.CTkFrame(self)
-		self.top_frame.pack(pady=20, padx=20, side=tkinter.TOP, fill=tkinter.X)
+        settings_path = os.path.join(base_path, "settings.json")
+        return settings_path
 
-		self.url_entry = customtkinter.CTkEntry(
-			self.top_frame, 
-			placeholder_text="Enter USACO Problem URL"
-		)
-		self.url_entry.pack(side=tkinter.LEFT, fill=tkinter.X, expand=True)
-		self.url_entry.bind("<KeyRelease>", self._validate_url)
-		self.url_entry.bind("<Return>", self._scrape_problem)
-		self.url_entry.bind("<Return>", self._validate_save)
+    def _load_settings(self):
+        """Load settings from file or create with defaults if missing."""
+        default_settings = {
+            "fullscreen": False,
+            "resolution": [800, 600],
+            "save_directory": os.path.expanduser("~\\Downloads")
+        }
 
-		self.save_button = customtkinter.CTkButton(
-			self.top_frame, 
-			text="Save", 
-			command=self._save_problem, 
-			state=tkinter.DISABLED, 
-			width=30
-		)
-		self.save_button.pack(side=tkinter.RIGHT)
+        try:
+            with open(self.config['settings_directory'], "r", encoding="utf-8") as file:
+                settings = json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            settings = default_settings
+            # Create settings file with defaults
+            os.makedirs(os.path.dirname(self.config['settings_directory']), exist_ok=True)
+            with open(self.config['settings_directory'], "w", encoding="utf-8") as file:
+                json.dump(default_settings, file, indent=4, sort_keys=True)
 
-		self.scrape_button = customtkinter.CTkButton(
-			self.top_frame, 
-			text="Scrape", 
-			command=self._scrape_problem, 
-			state=tkinter.DISABLED, 
-			width=150
-		)
-		self.scrape_button.pack(side=tkinter.RIGHT)
-		self.scrape_button.bind("<Button-1>", self._validate_save)
+        self.window_size = settings["resolution"]
+        self.is_fullscreen = settings["fullscreen"]
+        self.config['save_directory'] = (
+            os.path.expanduser(settings["save_directory"])
+            if settings["save_directory"] == "~\\Downloads"
+            else settings["save_directory"]
+        )
 
-		# Text Area for displaying scraped problem text
-		self.text_area = customtkinter.CTkTextbox(self)
-		self.text_area.pack(padx=20, pady=20, expand=True, fill=tkinter.BOTH)
-		self.text_area.bind("<KeyRelease>", self._update_text)
+    def _setup_ui(self):
+        """Setup UI components."""
+        # Top Frame setup
+        self.components['top_frame'] = customtkinter.CTkFrame(self)
+        self.components['top_frame'].pack(
+            pady=20, padx=20,
+            side=tkinter.TOP,
+            fill=tkinter.X
+        )
 
-	def _validate_url(self, event):
-		"""Validate the URL in the URL entry"""
-		url = self.url_entry.get().strip()
-		if url.startswith("https://usaco.org/") and "index.php?page=viewproblem" in url:
-			self.scrape_button.configure(state=tkinter.NORMAL)
-		else:
-			self.scrape_button.configure(state=tkinter.DISABLED)
+        # URL Entry setup
+        self.components['url_entry'] = customtkinter.CTkEntry(
+            self.components['top_frame'],
+            placeholder_text="Enter USACO Problem URL"
+        )
+        self.components['url_entry'].pack(
+            side=tkinter.LEFT,
+            fill=tkinter.X,
+            expand=True
+        )
+        self.components['url_entry'].bind(
+            "<KeyRelease>",
+            self._validate_url
+        )
+        self.components['url_entry'].bind(
+            "<Return>",
+            self._scrape_problem
+        )
+        self.components['url_entry'].bind(
+            "<Return>",
+            self._validate_save
+        )
 
-	def _validate_save(self, event):
-		"""Validate the save button"""
-		if self.usaco_problem == None:
-			self.save_button.configure(state=tkinter.DISABLED)
-		else:
-			self.save_button.configure(state=tkinter.NORMAL)
+        # Save Button setup
+        self.components['save_button'] = customtkinter.CTkButton(
+            self.components['top_frame'],
+            text="Save",
+            command=self._save_problem,
+            state=tkinter.DISABLED,
+            width=30
+        )
+        self.components['save_button'].pack(side=tkinter.RIGHT)
 
-	def _scrape_problem(self, event=None):
-		"""Scrape the USACO problem and display it"""
-		if self.scrape_button.cget("state") == tkinter.DISABLED:
-			return
+        # Scrape Button setup
+        self.components['scrape_button'] = customtkinter.CTkButton(
+            self.components['top_frame'],
+            text="Scrape",
+            command=self._scrape_problem,
+            state=tkinter.DISABLED,
+            width=150
+        )
+        self.components['scrape_button'].pack(side=tkinter.RIGHT)
+        self.components['scrape_button'].bind(
+            "<Button-1>",
+            self._validate_save
+        )
 
-		self.usaco_problem = scraper.USACOProblem(self.url_entry.get().strip())
-		self.text_area.delete("1.0", tkinter.END)
-		self.text_area.insert(tkinter.END, self.usaco_problem.text)
+        # Text Area setup
+        self.components['text_area'] = customtkinter.CTkTextbox(self)
+        self.components['text_area'].pack(
+            padx=20, pady=20,
+            expand=True,
+            fill=tkinter.BOTH
+        )
+        self.components['text_area'].bind(
+            "<KeyRelease>",
+            self._update_text
+        )
 
-	def _save_problem(self):
-		"""Save the USACO problem to a file"""
-		file_directory = tkinter.filedialog.asksaveasfilename(
-			initialdir=self.save_directory, 
-			title="Save USACO Problem", 
-			defaultextension=".md", 
-			filetypes=(("Markdown files", "*.md"), ("Text files", "*.txt"))
-		)
-		if file_directory:
-			# Get directory
-			self.save_directory = os.path.dirname(file_directory)
-			self.usaco_problem.write_problem(save_as=file_directory, overwrite=True)
-	
-	def _update_text(self, event):
-		"""Update the text area with the new text"""
-		if self.usaco_problem != None:
-			self.usaco_problem.text = self.text_area.get("1.0", tkinter.END)
+    def _validate_url(self, _):
+        """Validate the URL in the URL entry"""
+        url = self.components['url_entry'].get().strip()
+        if url.startswith("https://usaco.org/") and "index.php?page=viewproblem" in url:
+            self.components['scrape_button'].configure(state=tkinter.NORMAL)
+        else:
+            self.components['scrape_button'].configure(state=tkinter.DISABLED)
 
-	def close_window(self):
-		settings = {
-			"fullscreen": self.attributes("-fullscreen"), 
-			"resolution": (self.winfo_width(), self.winfo_height()), 
-			"save_directory": self.save_directory
-		}
-		# Write settings.json file back one directory
-		with open(self.settings_directory, "w") as file:
-			json.dump(settings, file, indent=4, sort_keys=True)
+    def _validate_save(self, _):
+        """Validate the save button"""
+        if self.config['usaco_problem'] is None:
+            self.components['save_button'].configure(state=tkinter.DISABLED)
+        else:
+            self.components['save_button'].configure(state=tkinter.NORMAL)
 
-		self.destroy()
+    def _scrape_problem(self, _=None):
+        """Scrape the USACO problem and display it"""
+        if self.components['scrape_button'].cget("state") == tkinter.DISABLED:
+            return
+
+        self.config['usaco_problem'] = scraper.USACOProblem(self.components['url_entry'].get().strip())
+        self.components['text_area'].delete(
+            "1.0",
+            tkinter.END
+        )
+        self.components['text_area'].insert(
+            tkinter.END,
+            self.config['usaco_problem'].text
+        )
+
+    def _save_problem(self):
+        """Save the USACO problem to a file"""
+        file_directory = tkinter.filedialog.asksaveasfilename(
+            initialdir=self.config['save_directory'],
+            title="Save USACO Problem",
+            defaultextension=".md",
+            filetypes=(
+                ("Markdown files", "*.md"),
+                ("Text files", "*.txt")
+            )
+        )
+        if file_directory:
+            # Get directory
+            self.config['save_directory'] = os.path.dirname(file_directory)
+            self.config['usaco_problem'].write_problem(save_as=file_directory, overwrite=True)
+
+    def _update_text(self, _):
+        """Update the text area with the new text"""
+        if self.config['usaco_problem'] is not None:
+            self.config['usaco_problem'].text = self.components['text_area'].get("1.0", tkinter.END)
+
+    def close_window(self):
+        """Save settings and close the application window."""
+        settings = {
+            "fullscreen": self.attributes("-fullscreen"), 
+            "resolution": self.window_size, 
+            "save_directory": self.config['save_directory']
+        }
+        # Write settings.json file back one directory
+        with open(self.config['settings_directory'], "w", encoding="utf-8") as file:
+            json.dump(
+                settings,
+                file,
+                indent=4,
+                sort_keys=True
+            )
+
+        self.destroy()
 
 if __name__ == "__main__":
-	app = USACOProblemScraper()
-	app.protocol("WM_DELETE_WINDOW", app.close_window)
-	app.mainloop()
+    app = USACOProblemScraper()
+    app.protocol(
+        "WM_DELETE_WINDOW",
+        app.close_window
+    )
+    app.mainloop()

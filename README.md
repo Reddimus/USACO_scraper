@@ -2,7 +2,12 @@
 
 This is a simple program that scrapes problems from the USA Computing Olympiad website and saves them to a local directory. The program is written in Python and uses the BeautifulSoup library to parse the HTML of the website.
 
+## Released builds
+
+You can download the released builds from the releases section of the repository.
+
 ## Requirements
+
 1. Python3 preferably 3.11 or higher.
 2. Install third party Python libraries (`beautifulsoup4`, `requests`, `customtkinter`) using the text file from the repository.
 
@@ -17,21 +22,21 @@ This is a simple program that scrapes problems from the USA Computing Olympiad w
 2. Run the file using the following command:
 
     ```bash
-    python scraper.py <usaco-website-url> --save <file-and-or-directory-path> --overwrite
+    python3 scraper.py <usaco-website-url> --save <file-and-or-directory-path> --overwrite
     ```
 
     > **Note:** that `--save` and `overwrite` are optional arguments. If `--save` is not provided, the problems will be saved to a file called `README.md` in the repository folder. While `--overwrite` is a flag that will overwrite the file if it already exists.
 
     Example 1:
-    
+
     ```bash
-    python scraper.py "https://usaco.org/index.php?page=viewproblem2&cpid=810" --save "Test"
+    python3 scraper.py "https://usaco.org/index.php?page=viewproblem2&cpid=810" --save "Test"
     ```
 
     Example 2:
 
     ```bash
-    python scraper.py "https://usaco.org/index.php?page=viewproblem2&cpid=1422" --save "C:\\Program Files\\Test.md" --overwrite
+    python3 scraper.py "https://usaco.org/index.php?page=viewproblem2&cpid=1422" --save "C:\\Program Files\\Test.md" --overwrite
     ```
 
 ## Using the USACO scraper file with the GUI
