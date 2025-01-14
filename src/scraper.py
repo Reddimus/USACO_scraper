@@ -22,13 +22,13 @@ class USACOProblem:
 
         # Group related attributes into a dictionary
         self.problem_info = {
-            'url': url,
-            'contest_url': None,
-            'contest_title': None,
-            'problem_title': None,
-            'division': None,
-            'abbreviated_title': None,
-            'text': None
+            "url": url,
+            "contest_url": None,
+            "contest_title": None,
+            "problem_title": None,
+            "division": None,
+            "abbreviated_title": None,
+            "text": None,
         }
 
         self._soup = self._fetch_problem_page(url)
@@ -37,28 +37,26 @@ class USACOProblem:
     @classmethod
     def is_valid_url(cls, url: str) -> bool:
         """Validate if the given URL is a valid USACO problem URL.
-        
+
         Args:
             url (str): URL to validate
-            
+
         Returns:
             bool: True if URL is valid, False otherwise
         """
         return bool(
-            url and
-            url.startswith(cls.USACO_BASE_URL) and
-            cls.PROBLEM_SUBWEBSITE in url
+            url and url.startswith(cls.USACO_BASE_URL) and cls.PROBLEM_SUBWEBSITE in url
         )
 
     def _fetch_problem_page(self, url: str) -> bs4.BeautifulSoup:
         """Fetch and parse the problem page.
-        
+
         Args:
             url (str): URL to fetch
-            
+
         Returns:
             bs4.BeautifulSoup: Parsed HTML content
-            
+
         Raises:
             requests.exceptions.ConnectionError: If connection fails
         """
@@ -68,7 +66,9 @@ class USACOProblem:
             try:
                 response = requests.get(url, timeout=30)
             except requests.exceptions.ConnectionError:
-                print(f"Connection error. Retrying {max_attempts - attempts} more times.")
+                print(
+                    f"Connection error. Retrying {max_attempts - attempts} more times."
+                )
                 time.sleep(attempts)
                 attempts += 1
 
@@ -82,17 +82,45 @@ class USACOProblem:
     def _parse_problem_data(self) -> None:
         """Parse problem data from the fetched page."""
         # Parse contest and problem information
-        self.problem_info['contest_url'] = (
+        self.problem_info["contest_url"] = (
             self.USACO_BASE_URL + self._soup.find("button")["onclick"].split("'")[1]
         )
-        self.problem_info['contest_title'] = self._soup.find("h2").text.strip()
-        self.problem_info['problem_title'] = self._soup.find_all("h2")[1].text.strip()
-        self.problem_info['division'] = self.problem_info['contest_title'].split(" ")[-1]
-        self.problem_info['abbreviated_title'] = self._format_abreviated_title()
+        self.problem_info["contest_title"] = self._soup.find("h2").text.strip()
+        self.problem_info["problem_title"] = self._soup.find_all("h2")[1].text.strip()
+        self.problem_info["division"] = self.problem_info["contest_title"].split(" ")[
+            -1
+        ]
+        self.problem_info["abbreviated_title"] = self._format_abreviated_title()
 
         # Generate formatted problem text
         problem_statement = self._format_problem_statement()
-        self.problem_info['text'] = self._format_problem(problem_statement)
+        self.problem_info["text"] = self._format_problem(problem_statement)
+
+    def _clean_markdown_text(self, text: str) -> str:
+        """Clean markdown text by fixing common formatting issues.
+
+        Args:
+            text (str): Text to clean
+
+        Returns:
+            str: Cleaned text
+        """
+        # Fix multiple consecutive blank lines
+        lines = text.splitlines()
+        cleaned_lines = []
+        prev_empty = False
+
+        for line in lines:
+            is_empty = not line.strip()
+            if not (is_empty and prev_empty):  # Skip if we have consecutive empty lines
+                # Fix trailing spaces - either remove them or ensure there are two
+                if line.rstrip() != line:  # Has trailing spaces
+                    if len(line) - len(line.rstrip()) == 1:  # Single trailing space
+                        line = line.rstrip()  # Remove single trailing space
+                cleaned_lines.append(line)
+            prev_empty = is_empty
+
+        return "\n".join(cleaned_lines)
 
     def _format_problem_statement(self) -> str:
         """Extracts the problem statement from the USACO problem page and formats it for markdown.
@@ -120,65 +148,39 @@ class USACOProblem:
             bolded.text.strip() for bolded in problem_text_div.find_all("strong")
         }
 
-        problem_text: str = problem_text_div.text
+        problem_text: str = self._clean_markdown_text(problem_text_div.text)
 
-        # Format for markdown
-
-        # Format subheaders to be titles
+        # Format subheaders to be titles with proper spacing
         for subheader in subheaders:
-            problem_text = problem_text.replace(subheader, f"**{subheader}**  ")
+            problem_text = problem_text.replace(subheader, f"\n**{subheader}**\n")
 
-        # Format sample input to be a code block
-        sample_start: int = 0
-        target: str = "**SAMPLE INPUT:**"
-        for sample_input in sample_inputs:
-            # Find the the current sample input index based off previous start index
-            sample_start = problem_text.find(target, sample_start)
-            if sample_start == -1:
-                break
-            sample_end = sample_start + len(target)
+        print("Sample Inputs: ")
+        for i, sample_input in enumerate(sample_inputs):
+            print(f"Sample Input {i+1}: {sample_input}")
+        print("\nSample Outputs: ")
+        for i, sample_output in enumerate(sample_outputs):
+            print(f"Sample Output {i+1}: {sample_output}")
+        print()
+        print(problem_text)
+        # Format sample inputs and outputs as code blocks
+        for i, (sample_input, sample_output) in enumerate(zip(sample_inputs, sample_outputs)):
+            # Find and replace the input section
+            input_target = f"**SAMPLE INPUT:**\n\n{sample_input}"
+            formatted_input = f"**SAMPLE INPUT:**\n\n```txt\n{sample_input}\n```"
+            problem_text = problem_text.replace(input_target, formatted_input)
 
-            # Gather other characters & spaces
-            while problem_text[sample_end] != "\n":
-                sample_end += 1
-
-            sample_title: str = problem_text[sample_start : sample_end + 1]
-            problem_text = problem_text.replace(
-                f"{sample_title}{sample_input}",
-                f"{sample_title}```\n{sample_input}\n```plaintext",
-            )
-
-            sample_start = (
-                sample_end  # Update the start index for the next sample input
-            )
-
-        # Format sample output to be a code block
-        sample_start = 0
-        target = "**SAMPLE OUTPUT:**"
-        for sample_output in sample_outputs:
-            # Find the the current sample output index based off previous start index
-            sample_start = problem_text.find(target, sample_start)
-            if sample_start == -1:
-                break
-            sample_end = sample_start + len(target)
-
-            # Gather other characters & spaces
-            while problem_text[sample_end] != "\n":
-                sample_end += 1
-
-            sample_title = problem_text[sample_start : sample_end + 1]
-            problem_text = problem_text.replace(
-                f"{sample_title}{sample_output}",
-                f"{sample_title}``\n{sample_output}\n```plaintext",
-            )
-
-            sample_start = sample_end
+            # Find and replace the output section
+            output_target = f"**SAMPLE OUTPUT:**\n\n{sample_output}"
+            formatted_output = f"**SAMPLE OUTPUT:**\n\n```txt\n{sample_output}\n```"
+            problem_text = problem_text.replace(output_target, formatted_output)
 
         # Format bolded text
         for bolded_text in bolded_texts:
-            problem_text = problem_text.replace(bolded_text, f"**{bolded_text}**")
+            if bolded_text not in ["SAMPLE INPUT:", "SAMPLE OUTPUT:"]:
+                problem_text = problem_text.replace(bolded_text, f"**{bolded_text}**")
 
-        return problem_text
+        # Final cleanup of any formatting issues
+        return self._clean_markdown_text(problem_text)
 
     def _format_abreviated_title(self) -> str:
         """Formats the problem title to be used as the file name.
@@ -186,16 +188,21 @@ class USACOProblem:
         Returns:
                 str: Formatted problem title.
         """
-        year = self.problem_info['contest_title'].split(" ")[1]
-        problem_number = self.problem_info['problem_title'].split(" ")[1].split(".")[0]
-        problem_name = "_".join(self.problem_info['problem_title'].split(" ")[2::])
+        year = self.problem_info["contest_title"].split(" ")[1]
+        problem_number = self.problem_info["problem_title"].split(" ")[1].split(".")[0]
+        problem_name = "_".join(self.problem_info["problem_title"].split(" ")[2::])
         return f"P{problem_number}_{year}-{problem_name}"
 
     def _format_problem(self, problem_statement: str) -> str:
         """Format the complete problem for markdown."""
         contest_title = f"# [{self.problem_info['contest_title']}]({self.problem_info['contest_url']})"
-        problem_title = f"## [{self.problem_info['problem_title']}]({self.problem_info['url']})"
-        return f"{contest_title}\n{problem_title}\n\n{problem_statement}"
+        problem_title = (
+            f"## [{self.problem_info['problem_title']}]({self.problem_info['url']})"
+        )
+
+        # Combine and clean the final text
+        text = f"{contest_title}\n\n{problem_title}\n\n{problem_statement}"
+        return self._clean_markdown_text(text)
 
     def write_problem(self, save_as: str = "README", overwrite: bool = False) -> None:
         """Write the problem to a markdown file."""
@@ -206,10 +213,14 @@ class USACOProblem:
         if any(char in save_as for char in ["*", "?", '"', "<", ">", "|"]):
             raise ValueError("File name contains invalid characters.")
 
-        if "." in save_as and (not save_as.endswith(".md") and not save_as.endswith(".txt")):
+        if "." in save_as and (
+            not save_as.endswith(".md") and not save_as.endswith(".txt")
+        ):
             raise ValueError("File must be a markdown file or a text file.")
 
-        if ("\\" in save_as or "/" in save_as) and not os.path.exists(os.path.dirname(save_as)):
+        if ("\\" in save_as or "/" in save_as) and not os.path.exists(
+            os.path.dirname(save_as)
+        ):
             raise ValueError("Directory does not exist.")
 
         if os.path.exists(os.path.dirname(save_as)):
@@ -247,12 +258,12 @@ class USACOProblem:
     @property
     def text(self) -> str:
         """Get the formatted problem text."""
-        return self.problem_info['text']
+        return self.problem_info["text"]
 
     @text.setter
     def text(self, value: str) -> None:
         """Set the formatted problem text."""
-        self.problem_info['text'] = value
+        self.problem_info["text"] = value
 
 
 if __name__ == "__main__":
