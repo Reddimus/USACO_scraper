@@ -55,17 +55,34 @@ class USACOProblemScraper(customtkinter.CTk):
         """Setup UI components."""
         # Top Frame setup
         self.components['top_frame'] = customtkinter.CTkFrame(self)
-        self.components['top_frame'].pack(pady=20, padx=20, side=tkinter.TOP, fill=tkinter.X)
+        self.components['top_frame'].pack(
+            pady=20, padx=20,
+            side=tkinter.TOP,
+            fill=tkinter.X
+        )
 
         # URL Entry setup
         self.components['url_entry'] = customtkinter.CTkEntry(
             self.components['top_frame'],
             placeholder_text="Enter USACO Problem URL"
         )
-        self.components['url_entry'].pack(side=tkinter.LEFT, fill=tkinter.X, expand=True)
-        self.components['url_entry'].bind("<KeyRelease>", self._validate_url)
-        self.components['url_entry'].bind("<Return>", self._scrape_problem)
-        self.components['url_entry'].bind("<Return>", self._validate_save)
+        self.components['url_entry'].pack(
+            side=tkinter.LEFT,
+            fill=tkinter.X,
+            expand=True
+        )
+        self.components['url_entry'].bind(
+            "<KeyRelease>",
+            self._validate_url
+        )
+        self.components['url_entry'].bind(
+            "<Return>",
+            self._scrape_problem
+        )
+        self.components['url_entry'].bind(
+            "<Return>",
+            self._validate_save
+        )
 
         # Save Button setup
         self.components['save_button'] = customtkinter.CTkButton(
@@ -86,12 +103,22 @@ class USACOProblemScraper(customtkinter.CTk):
             width=150
         )
         self.components['scrape_button'].pack(side=tkinter.RIGHT)
-        self.components['scrape_button'].bind("<Button-1>", self._validate_save)
+        self.components['scrape_button'].bind(
+            "<Button-1>",
+            self._validate_save
+        )
 
         # Text Area setup
         self.components['text_area'] = customtkinter.CTkTextbox(self)
-        self.components['text_area'].pack(padx=20, pady=20, expand=True, fill=tkinter.BOTH)
-        self.components['text_area'].bind("<KeyRelease>", self._update_text)
+        self.components['text_area'].pack(
+            padx=20, pady=20,
+            expand=True,
+            fill=tkinter.BOTH
+        )
+        self.components['text_area'].bind(
+            "<KeyRelease>",
+            self._update_text
+        )
 
     def _validate_url(self, _):
         """Validate the URL in the URL entry"""
@@ -114,8 +141,14 @@ class USACOProblemScraper(customtkinter.CTk):
             return
 
         self.config['usaco_problem'] = scraper.USACOProblem(self.components['url_entry'].get().strip())
-        self.components['text_area'].delete("1.0", tkinter.END)
-        self.components['text_area'].insert(tkinter.END, self.config['usaco_problem'].text)
+        self.components['text_area'].delete(
+            "1.0",
+            tkinter.END
+        )
+        self.components['text_area'].insert(
+            tkinter.END,
+            self.config['usaco_problem'].text
+        )
 
     def _save_problem(self):
         """Save the USACO problem to a file"""
@@ -123,7 +156,10 @@ class USACOProblemScraper(customtkinter.CTk):
             initialdir=self.config['save_directory'],
             title="Save USACO Problem",
             defaultextension=".md",
-            filetypes=(("Markdown files", "*.md"), ("Text files", "*.txt"))
+            filetypes=(
+                ("Markdown files", "*.md"),
+                ("Text files", "*.txt")
+            )
         )
         if file_directory:
             # Get directory
@@ -144,11 +180,19 @@ class USACOProblemScraper(customtkinter.CTk):
         }
         # Write settings.json file back one directory
         with open(self.config['settings_directory'], "w", encoding="utf-8") as file:
-            json.dump(settings, file, indent=4, sort_keys=True)
+            json.dump(
+                settings,
+                file,
+                indent=4,
+                sort_keys=True
+            )
 
         self.destroy()
 
 if __name__ == "__main__":
     app = USACOProblemScraper()
-    app.protocol("WM_DELETE_WINDOW", app.close_window)
+    app.protocol(
+        "WM_DELETE_WINDOW",
+        app.close_window
+    )
     app.mainloop()
