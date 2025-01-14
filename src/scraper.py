@@ -10,46 +10,89 @@ import requests
 class USACOProblem:
     """Class to scrape, format and save USACO problems from their website."""
 
+    USACO_BASE_URL = "https://usaco.org/"
+    PROBLEM_SUBWEBSITE = "index.php?page=viewproblem"
+
     def __init__(self, url: str) -> None:
         """Initialize USACOProblem with given URL."""
-        self.usaco_base_url: str = "https://usaco.org/"
-        problem_subwebsite: str = "index.php?page=viewproblem"
-        if (
-            not url
-            or not url.startswith(self.usaco_base_url)
-            or problem_subwebsite not in url
-        ):
+        if not self.is_valid_url(url):
             raise ValueError(
-                f"URL must start with: {self.usaco_base_url} and contain {problem_subwebsite}."
+                f"URL must start with: {self.USACO_BASE_URL} and contain {self.PROBLEM_SUBWEBSITE}."
             )
-        self.url: str = url
 
+        # Group related attributes into a dictionary
+        self.problem_info = {
+            'url': url,
+            'contest_url': None,
+            'contest_title': None,
+            'problem_title': None,
+            'division': None,
+            'abbreviated_title': None,
+            'text': None
+        }
+
+        self._soup = self._fetch_problem_page(url)
+        self._parse_problem_data()
+
+    @classmethod
+    def is_valid_url(cls, url: str) -> bool:
+        """Validate if the given URL is a valid USACO problem URL.
+        
+        Args:
+            url (str): URL to validate
+            
+        Returns:
+            bool: True if URL is valid, False otherwise
+        """
+        return bool(
+            url and
+            url.startswith(cls.USACO_BASE_URL) and
+            cls.PROBLEM_SUBWEBSITE in url
+        )
+
+    def _fetch_problem_page(self, url: str) -> bs4.BeautifulSoup:
+        """Fetch and parse the problem page.
+        
+        Args:
+            url (str): URL to fetch
+            
+        Returns:
+            bs4.BeautifulSoup: Parsed HTML content
+            
+        Raises:
+            requests.exceptions.ConnectionError: If connection fails
+        """
         response = None
         attempts, max_attempts = 0, 3
         while response is None and attempts < max_attempts:
             try:
                 response = requests.get(url, timeout=30)
             except requests.exceptions.ConnectionError:
-                print(
-                    f"Connection error. Retrying {max_attempts - attempts} more times."
-                )
+                print(f"Connection error. Retrying {max_attempts - attempts} more times.")
                 time.sleep(attempts)
                 attempts += 1
+
         if response is None:
             raise requests.exceptions.ConnectionError(
                 "Connection error. Please check your internet connection or the URL."
             )
-        self._soup = bs4.BeautifulSoup(response.content, "html.parser")
 
-        self.contest_url = (
-            self.usaco_base_url + self._soup.find("button")["onclick"].split("'")[1]
+        return bs4.BeautifulSoup(response.content, "html.parser")
+
+    def _parse_problem_data(self) -> None:
+        """Parse problem data from the fetched page."""
+        # Parse contest and problem information
+        self.problem_info['contest_url'] = (
+            self.USACO_BASE_URL + self._soup.find("button")["onclick"].split("'")[1]
         )
-        self.contest_title: str = self._soup.find("h2").text.strip()
-        self.problem_title: str = self._soup.find_all("h2")[1].text.strip()
-        self.division: str = self.contest_title.split(" ")[-1]
-        self.abreviated_title: str = self._format_abreviated_title()
-        self.problem_statement: str = self._format_problem_statement()
-        self.text: str = self._format_problem()
+        self.problem_info['contest_title'] = self._soup.find("h2").text.strip()
+        self.problem_info['problem_title'] = self._soup.find_all("h2")[1].text.strip()
+        self.problem_info['division'] = self.problem_info['contest_title'].split(" ")[-1]
+        self.problem_info['abbreviated_title'] = self._format_abreviated_title()
+
+        # Generate formatted problem text
+        problem_statement = self._format_problem_statement()
+        self.problem_info['text'] = self._format_problem(problem_statement)
 
     def _format_problem_statement(self) -> str:
         """Extracts the problem statement from the USACO problem page and formats it for markdown.
@@ -143,21 +186,16 @@ class USACOProblem:
         Returns:
                 str: Formatted problem title.
         """
-        year: str = self.contest_title.split(" ")[1]
-
-        problem_number: str = self.problem_title.split(" ")[1].split(".")[0]
-        problem_name: str = "_".join(self.problem_title.split(" ")[2::])
+        year = self.problem_info['contest_title'].split(" ")[1]
+        problem_number = self.problem_info['problem_title'].split(" ")[1].split(".")[0]
+        problem_name = "_".join(self.problem_info['problem_title'].split(" ")[2::])
         return f"P{problem_number}_{year}-{problem_name}"
 
-    def _format_problem(self) -> str:
-        """Formats the problem for markdown.
-
-        Returns:
-                str: Formatted problem.
-        """
-        contest_title: str = f"# [{self.contest_title}]({self.contest_url})"
-        problem_title: str = f"## [{self.problem_title}]({self.url})"
-        return f"{contest_title}\n{problem_title}\n\n{self.problem_statement}"
+    def _format_problem(self, problem_statement: str) -> str:
+        """Format the complete problem for markdown."""
+        contest_title = f"# [{self.problem_info['contest_title']}]({self.problem_info['contest_url']})"
+        problem_title = f"## [{self.problem_info['problem_title']}]({self.problem_info['url']})"
+        return f"{contest_title}\n{problem_title}\n\n{problem_statement}"
 
     def write_problem(self, save_as: str = "README", overwrite: bool = False) -> None:
         """Write the problem to a markdown file."""
@@ -210,6 +248,16 @@ class USACOProblem:
         # Create a new file with the formatted problem
         with open(save_as, "w", encoding="utf-8") as fin:
             fin.write(self.text)
+
+    @property
+    def text(self) -> str:
+        """Get the formatted problem text."""
+        return self.problem_info['text']
+
+    @text.setter
+    def text(self, value: str) -> None:
+        """Set the formatted problem text."""
+        self.problem_info['text'] = value
 
 
 if __name__ == "__main__":
