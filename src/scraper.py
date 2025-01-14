@@ -10,8 +10,8 @@ import requests
 class USACOProblem:
     """Class to scrape, format and save USACO problems from their website."""
 
-    USACO_BASE_URL = "https://usaco.org/"
-    PROBLEM_SUBWEBSITE = "index.php?page=viewproblem"
+    USACO_BASE_URL: str = "https://usaco.org/"
+    PROBLEM_SUBWEBSITE: str = "index.php?page=viewproblem"
 
     def __init__(self, url: str) -> None:
         """Initialize USACOProblem with given URL."""
@@ -202,24 +202,19 @@ class USACOProblem:
         # Check & get the directory and file name to save the problem as
         file_name: str = ""
         directory: str = ""
-        # If the save_as file has invalid characters
+
         if any(char in save_as for char in ["*", "?", '"', "<", ">", "|"]):
             raise ValueError("File name contains invalid characters.")
-        # Else if the save_as file is invalid file type format
-        elif "." in save_as and (
-            not save_as.endswith(".md") and not save_as.endswith(".txt")
-        ):
+
+        if "." in save_as and (not save_as.endswith(".md") and not save_as.endswith(".txt")):
             raise ValueError("File must be a markdown file or a text file.")
-        # Else if the save_as file is located at a directory that does not exist
-        elif ("\\" in save_as or "/" in save_as) and not os.path.exists(
-            os.path.dirname(save_as)
-        ):
+
+        if ("\\" in save_as or "/" in save_as) and not os.path.exists(os.path.dirname(save_as)):
             raise ValueError("Directory does not exist.")
-        # Else if the save_as file is located at a valid directory
-        elif os.path.exists(os.path.dirname(save_as)):
+
+        if os.path.exists(os.path.dirname(save_as)):
             directory = os.path.dirname(save_as)
             file_name = os.path.basename(save_as)
-        # Else if the save_as file is just a string and not a directory
         else:
             default_directory = os.getcwd()
             directory = (
