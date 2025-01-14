@@ -2,6 +2,10 @@
 
 This is a simple program that scrapes problems from the USA Computing Olympiad website and saves them to a local directory. The program is written in Python and uses the BeautifulSoup library to parse the HTML of the website.
 
+## Released builds
+
+You can download the released builds from the releases section of the repository.
+
 ## Requirements
 
 1. Python3 preferably 3.11 or higher.

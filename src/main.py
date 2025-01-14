@@ -3,6 +3,7 @@
 import json
 import os
 import tkinter
+import sys
 
 import customtkinter
 
@@ -17,7 +18,7 @@ class USACOProblemScraper(customtkinter.CTk):
 
         # Group configuration related attributes
         self.config = {
-            'settings_directory': os.path.join(os.path.dirname(os.getcwd()), "settings.json"),
+            'settings_directory': self._get_settings_path(),
             'save_directory': None,
             'usaco_problem': None
         }
@@ -38,10 +39,35 @@ class USACOProblemScraper(customtkinter.CTk):
         }
         self._setup_ui()
 
+    def _get_settings_path(self) -> str:
+        """Get the path to settings.json, handling both development and bundled cases."""
+        if getattr(sys, 'frozen', False):
+            # Running as bundled exe
+            base_path = os.path.dirname(sys.executable)
+        else:
+            # Running in development
+            base_path = os.path.dirname(os.getcwd())
+
+        settings_path = os.path.join(base_path, "settings.json")
+        return settings_path
+
     def _load_settings(self):
-        """Load settings from the settings file."""
-        with open(self.config['settings_directory'], "r", encoding="utf-8") as file:
-            settings = json.load(file)
+        """Load settings from file or create with defaults if missing."""
+        default_settings = {
+            "fullscreen": False,
+            "resolution": [800, 600],
+            "save_directory": os.path.expanduser("~\\Downloads")
+        }
+
+        try:
+            with open(self.config['settings_directory'], "r", encoding="utf-8") as file:
+                settings = json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            settings = default_settings
+            # Create settings file with defaults
+            os.makedirs(os.path.dirname(self.config['settings_directory']), exist_ok=True)
+            with open(self.config['settings_directory'], "w", encoding="utf-8") as file:
+                json.dump(default_settings, file, indent=4, sort_keys=True)
 
         self.window_size = settings["resolution"]
         self.is_fullscreen = settings["fullscreen"]
